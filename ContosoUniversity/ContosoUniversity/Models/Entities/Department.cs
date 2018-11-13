@@ -14,7 +14,22 @@ namespace ContosoUniversity.Models
 
         [DataType(DataType.Currency)]
         [Column(TypeName = "money")]
-        public decimal Budget { get; set; }
+        private decimal budget;
+        public decimal Budget
+        {
+            get
+            {
+                return budget;
+            }
+            set
+            {
+                budget = value; 
+            }
+
+        }
+
+        [Timestamp]
+        public byte[] RowVersion { get; set; }
 
         [DataType(DataType.Date)]
         [DisplayFormat(DataFormatString = "{0:yyyy-MM-dd}", ApplyFormatInEditMode = true)]

@@ -9,7 +9,7 @@ namespace ContosoUniversity.Data
 {
     public class SchoolContext : DbContext
     {
-        public SchoolContext(DbContextOptions<SchoolContext> options) : base(options)
+        public SchoolContext(DbContextOptions<SchoolContext> options) : base(options) 
         {
 
         }
@@ -23,11 +23,15 @@ namespace ContosoUniversity.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<Course>().ToTable("Course");
+            modelBuilder.Entity<Course>().ToTable(nameof(Course));
             modelBuilder.Entity<Enrollment>().ToTable("Enrollment");
             modelBuilder.Entity<Student>().ToTable("Student");
 
             modelBuilder.Entity<CourseAssignment>().HasKey(y => new { y.CourseID, y.InstructorID });
+
+            modelBuilder.Entity<Department>()
+                .Property(p => p.RowVersion).IsConcurrencyToken();
+
         }
 
         //"Code like the person following you is an ax weilding murderer and knows where you live"

@@ -12,9 +12,10 @@ using System;
 namespace ContosoUniversity.Migrations
 {
     [DbContext(typeof(SchoolContext))]
-    partial class SchoolContextModelSnapshot : ModelSnapshot
+    [Migration("20181108034900_changed_departments")]
+    partial class changed_departments
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -57,7 +58,8 @@ namespace ContosoUniversity.Migrations
                     b.Property<int>("DepartmentID")
                         .ValueGeneratedOnAdd();
 
-                    b.Property<decimal>("Budget");
+                    b.Property<decimal>("Budget")
+                        .HasColumnType("money");
 
                     b.Property<int?>("InstructorID");
 

@@ -24,8 +24,8 @@ namespace ContosoUniversity.Controllers
             int? page)
         {
             ViewData["IDSortParam"] = sortOrder;
-            ViewData["TitleSortParam"] = sortOrder == "Title" ? "title_desc" : "Title";
-            ViewData["CreditSortParam"] = sortOrder == "Credit" ? "credit_desc" : "Credit";
+            ViewData["TitleSortParam"] = sortOrder == "Title" ? "TitleName" : "Title";
+            ViewData["CreditSortParam"] = sortOrder == "Credit" ? "CreditName" : "Credit";
             ViewData["CurrentFilter"] = searchString;
 
             if (searchString != null)
@@ -35,37 +35,43 @@ namespace ContosoUniversity.Controllers
             else
             {
                 searchString = currentFilter;
+
             }
 
             var courses = from c in _context.Courses
-                          //join d in _context.Departments on c.DepartmentID equals d.DepartmentID
+                              //join d in _context.Department on c.DepartmentID equals d.DepartmentID
                           select c;
+
             if (!String.IsNullOrEmpty(searchString))
             {
                 courses = courses.Where(y => y.Title.Contains(searchString));
-
             }
+
             switch (sortOrder)
             {
-                case "title_desc":
+                case "TitleName":
                     courses = courses.OrderByDescending(y => y.Title);
                     break;
-                case "CourseID":
+                case "courseId":
                     courses = courses.OrderBy(y => y.CourseID);
                     break;
-                case "courseID_desc":
-                    courses = courses.OrderByDescending(y => y.CourseID);
+                case "creditName":
+                    courses = courses.OrderByDescending(y => y.Credits);
                     break;
                 default:
                     courses = courses.OrderBy(y => y.Title);
                     break;
+
             }
+
             int pageSize = 3;
 
-            //get the paginated list back with the courses we need
-            var coursesList = await PaginatedList<Course>.CreateAsync(courses.AsNoTracking(), page ?? 1, pageSize);
-            //Loop through the courses and get thier department
-            foreach(Course course in coursesList)
+            // Get the Paginated List Back with the courses we need
+            var coursesList = await PaginatedList<Course>.CreateAsync(courses.AsNoTracking(), page ?? 1,
+               pageSize);
+
+            //Loop through the courses and get their department
+            foreach (Course course in coursesList)
             {
                 course.Department = _context.Departments.SingleOrDefault(y => y.DepartmentID == course.DepartmentID);
             }
@@ -76,13 +82,18 @@ namespace ContosoUniversity.Controllers
         // GET: Courses/Details/5
         public async Task<IActionResult> Details(int? id)
         {
+            // If No Course Id Return Null
             if (id == null)
             {
                 return NotFound();
             }
 
             var course = await _context.Courses
+                .Include(c => c.Enrollments)
+                .ThenInclude(e => e.Student)
+                .AsNoTracking()
                 .SingleOrDefaultAsync(m => m.CourseID == id);
+
             if (course == null)
             {
                 return NotFound();
@@ -94,6 +105,7 @@ namespace ContosoUniversity.Controllers
         // GET: Courses/Create
         public IActionResult Create()
         {
+            PopulateDepartmentsDropDownList();
             return View();
         }
 
@@ -102,14 +114,23 @@ namespace ContosoUniversity.Controllers
         // more details see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("CourseID,Title,Credits")] Course course)
+        public async Task<IActionResult> Create([Bind("Title, Credits")] Course course)
         {
-            if (ModelState.IsValid)
+            try
             {
-                _context.Add(course);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                if (ModelState.IsValid)
+                {
+                    _context.Add(course);
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
+                }
             }
+            catch (DbUpdateException)
+            {
+                ModelState.AddModelError("", "Unable to save changes, Contact Administrator for Support!");
+            }
+
+            PopulateDepartmentsDropDownList(course.DepartmentID);
             return View(course);
         }
 
@@ -126,46 +147,42 @@ namespace ContosoUniversity.Controllers
             {
                 return NotFound();
             }
+            PopulateDepartmentsDropDownList(course.DepartmentID);
             return View(course);
         }
 
         // POST: Courses/Edit/5
         // To protect from overposting attacks, please enable the specific properties you want to bind to, for 
         // more details see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [HttpPost]
+        [HttpPost, ActionName("Edit")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("CourseID,Title,Credits")] Course course)
+        public async Task<IActionResult> EditPost(int? id)
         {
-            if (id != course.CourseID)
+            if (id == null)
             {
                 return NotFound();
             }
 
-            if (ModelState.IsValid)
+            var courseToUpdate = await _context.Courses.SingleOrDefaultAsync(y => y.CourseID == id);
+
+            if (await TryUpdateModelAsync<Course>(courseToUpdate, "", y => y.Title, y => y.Credits))
             {
                 try
                 {
-                    _context.Update(course);
                     await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
                 }
-                catch (DbUpdateConcurrencyException)
+                catch (DbUpdateException)
                 {
-                    if (!CourseExists(course.CourseID))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
+                    ModelState.AddModelError("", "Error occurred please contact Meagans Back up Tate");
                 }
-                return RedirectToAction(nameof(Index));
             }
-            return View(course);
+            PopulateDepartmentsDropDownList(courseToUpdate.DepartmentID);
+            return View(courseToUpdate);
         }
 
         // GET: Courses/Delete/5
-        public async Task<IActionResult> Delete(int? id)
+        public async Task<IActionResult> Delete(int? id, bool? saveChangesError = false)
         {
             if (id == null)
             {
@@ -173,12 +190,17 @@ namespace ContosoUniversity.Controllers
             }
 
             var course = await _context.Courses
+                .AsNoTracking()
                 .SingleOrDefaultAsync(m => m.CourseID == id);
             if (course == null)
             {
                 return NotFound();
             }
 
+            if (saveChangesError.GetValueOrDefault())
+            {
+                ViewData["ErrorMessage"] = "Delete Failed Contact Nora";
+            }
             return View(course);
         }
 
@@ -187,15 +209,39 @@ namespace ContosoUniversity.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var course = await _context.Courses.SingleOrDefaultAsync(m => m.CourseID == id);
-            _context.Courses.Remove(course);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            var course = await _context.Courses
+                .AsNoTracking()
+                .SingleOrDefaultAsync(m => m.CourseID == id);
+
+            if (course == null)
+            {
+                return RedirectToAction(nameof(Index));
+            }
+
+            try
+            {
+                _context.Courses.Remove(course);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
+            catch (DbUpdateException)
+            {
+                return RedirectToAction(nameof(Delete), new { id = id, saveChangesError = true });
+            }
+
         }
 
         private bool CourseExists(int id)
         {
             return _context.Courses.Any(e => e.CourseID == id);
+        }
+
+        private void PopulateDepartmentsDropDownList(object selectedDepartment = null)
+        {
+            var departmentsQuery = from d in _context.Departments
+                                   orderby d.Name
+                                   select d;
+            ViewBag.DepartmentID = new SelectList(departmentsQuery.AsNoTracking(), "DepartmentID", "Name", selectedDepartment);
         }
     }
 }
