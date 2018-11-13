@@ -18,11 +18,11 @@ namespace ContosoUniversity
     {
         public Startup(IConfiguration configuration)
         {
-     
+
             Configuration = configuration;
         }
 
-        
+
 
         public IConfiguration Configuration { get; }
 
@@ -32,13 +32,31 @@ namespace ContosoUniversity
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
 
-            services.AddDbContext<SchoolContext>(options => 
+            services.AddDbContext<SchoolContext>(options =>
                 options.UseSqlServer(Configuration.GetConnectionString("SchoolContext")));
 
             services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
 
+            services.Configure<IdentityOptions>(options =>
+            {
+                // Password settings
+                options.Password.RequireDigit = true;
+                options.Password.RequireLowercase = true;
+                options.Password.RequireUppercase = true;
+                options.Password.RequiredLength = 2;
+                options.Password.RequiredUniqueChars = 1;
+                // Lockout setting 
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.AllowedForNewUsers = true;
+                // User settings
+                options.User.AllowedUserNameCharacters =
+                 "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
+                options.User.RequireUniqueEmail = false;
+            });
+            
             // Add application services.
             services.AddTransient<IEmailSender, EmailSender>();
 

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using ContosoUniversity.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ContosoUniversity.Controllers
 {
@@ -14,7 +15,7 @@ namespace ContosoUniversity.Controllers
         {
             return View();
         }
-
+        [Authorize]
         public IActionResult About()
         {
             ViewData["Message"] = "Your application description page.";
